@@ -3,396 +3,289 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jenkins Simulator Dashboard</title>
+  <title>JENKINS_SIM | VARUN R</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700;800&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { font-family: 'JetBrains Mono', monospace; box-sizing: border-box; }
 
-    :root {
-      --bg:        #0d1117;
-      --surface:   #161b22;
-      --surface2:  #21262d;
-      --border:    #30363d;
-      --text:      #e6edf3;
-      --muted:     #8b949e;
-      --blue:      #388bfd;
-      --green:     #3fb950;
-      --yellow:    #d29922;
-      --red:       #f85149;
-      --purple:    #bc8cff;
-      --orange:    #f0883e;
+    body { background: #09090b; color: #fff1f2; min-height: 100vh; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #881337; }
+
+    /* ── Animations ── */
+    @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+    @keyframes slide-in  { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+    @keyframes spin-slow { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+
+    .live-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
+    .slide-in  { animation: slide-in 0.3s ease forwards; }
+
+    /* ── Cards ── */
+    .panel {
+      background: rgba(136,19,55,0.04);
+      border: 1px solid rgba(136,19,55,0.2);
+      transition: background 0.2s, border-color 0.2s;
     }
+    .panel:hover { background: rgba(136,19,55,0.1); border-color: rgba(225,29,72,0.35); }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
-      line-height: 1.6;
+    /* ── Worker card states ── */
+    .worker-busy  { border-color: rgba(225,29,72,0.6) !important; background: rgba(136,19,55,0.15) !important; }
+    .worker-idle  { }
+
+    /* ── Status pills ── */
+    .pill { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+    .pill-queued  { background:rgba(161,98,7,0.15);  color:#fbbf24; border:1px solid rgba(161,98,7,0.3); }
+    .pill-running { background:rgba(225,29,72,0.15); color:#fb7185; border:1px solid rgba(225,29,72,0.3); }
+    .pill-success { background:rgba(22,101,52,0.15); color:#4ade80; border:1px solid rgba(22,101,52,0.3); }
+    .pill-failed  { background:rgba(127,29,29,0.25); color:#f87171; border:1px solid rgba(127,29,29,0.4); }
+
+    /* ── Table rows ── */
+    tbody tr { border-top: 1px solid rgba(136,19,55,0.15); cursor:pointer; transition:background 0.15s; }
+    tbody tr:hover { background: rgba(136,19,55,0.12); }
+
+    /* ── Inputs & selects ── */
+    input, select {
+      background: rgba(136,19,55,0.08);
+      border: 1px solid rgba(136,19,55,0.25);
+      color: #fff1f2;
+      padding: 6px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
     }
+    input:focus, select:focus { border-color: #e11d48; }
+    input::placeholder { color: rgba(255,241,242,0.3); }
+    select option { background: #18080e; }
 
-    /* ── Header ── */
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 12px 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    header h1 { font-size: 16px; font-weight: 600; }
-    .badge {
-      background: var(--green);
-      color: #000;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 12px;
-    }
-    .live-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--green);
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-    /* ── Layout ── */
-    main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
-
-    /* ── Stat Cards ── */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      text-align: center;
-    }
-
-    .stat-card .number { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
-    .stat-card .label  { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .stat-card.queued  .number { color: var(--yellow); }
-    .stat-card.running .number { color: var(--blue); }
-    .stat-card.success .number { color: var(--green); }
-    .stat-card.failed  .number { color: var(--red); }
-
-    /* ── Section header ── */
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-    .section-header h2 { font-size: 14px; font-weight: 600; }
-
-    .btn {
-      background: var(--blue);
-      color: white;
+    /* ── Buttons ── */
+    .btn-primary {
+      background: #e11d48;
+      color: #fff;
       border: none;
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      transition: opacity 0.15s;
-    }
-    .btn:hover { opacity: 0.85; }
-    .btn.sm { padding: 4px 10px; font-size: 12px; }
-    .btn-outline {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-
-    /* ── Workers Grid ── */
-    .workers-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .worker-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px;
-      transition: border-color 0.3s;
-    }
-
-    .worker-card.busy { border-color: var(--blue); }
-
-    .worker-name { font-weight: 600; margin-bottom: 4px; font-size: 13px; }
-    .worker-specialty { color: var(--purple); font-size: 11px; margin-bottom: 8px; }
-    .worker-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-weight: 500;
-    }
-    .worker-status.idle  { background: rgba(63,185,80,0.15); color: var(--green); }
-    .worker-status.busy  { background: rgba(56,139,253,0.15); color: var(--blue); }
-    .worker-job {
-      margin-top: 8px;
+      padding: 7px 16px;
+      font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
-      color: var(--muted);
-      font-family: monospace;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .worker-stats {
-      margin-top: 8px;
-      display: flex;
-      gap: 10px;
-      font-size: 11px;
-    }
-
-    .worker-stats span:first-child { color: var(--green); }
-    .worker-stats span:last-child  { color: var(--red); }
-
-    /* ── Job Table ── */
-    .table-wrapper {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    table { width: 100%; border-collapse: collapse; }
-    thead th {
-      background: var(--surface2);
-      padding: 10px 14px;
-      text-align: left;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    tbody tr {
-      border-top: 1px solid var(--border);
       cursor: pointer;
-      transition: background 0.1s;
+      transition: background 0.15s, transform 0.1s;
     }
-    tbody tr:hover { background: var(--surface2); }
-    tbody td { padding: 10px 14px; font-size: 13px; }
+    .btn-primary:hover  { background: #be123c; }
+    .btn-primary:active { transform: scale(0.97); }
 
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      border-radius: 10px;
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid rgba(136,19,55,0.35);
+      color: rgba(255,241,242,0.6);
+      padding: 7px 16px;
+      font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
     }
-    .status-pill.queued  { background: rgba(210,153,34,0.15); color: var(--yellow); }
-    .status-pill.running { background: rgba(56,139,253,0.2);  color: var(--blue); }
-    .status-pill.success { background: rgba(63,185,80,0.15);  color: var(--green); }
-    .status-pill.failed  { background: rgba(248,81,73,0.15);  color: var(--red); }
+    .btn-ghost:hover { border-color: #e11d48; color: #fb7185; }
 
-    .lang-tag {
-      display: inline-block;
-      padding: 1px 7px;
-      border-radius: 4px;
-      font-size: 11px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--purple);
-      font-family: monospace;
+    .btn-filter {
+      background: transparent;
+      border: 1px solid rgba(136,19,55,0.2);
+      color: rgba(255,241,242,0.4);
+      padding: 4px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
     }
+    .btn-filter:hover, .btn-filter.active { border-color: #e11d48; color: #fb7185; background: rgba(225,29,72,0.08); }
 
-    /* ── Log Modal ── */
+    /* ── Modal ── */
     .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      z-index: 100;
-      align-items: center;
-      justify-content: center;
+      display:none; position:fixed; inset:0;
+      background:rgba(9,9,11,0.85);
+      backdrop-filter:blur(4px);
+      z-index:100; align-items:center; justify-content:center;
     }
-    .modal-overlay.open { display: flex; }
+    .modal-overlay.open { display:flex; }
 
-    .modal {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      width: 90%;
-      max-width: 700px;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .modal-header {
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal-header h3 { font-size: 14px; font-weight: 600; }
-
-    .close-btn {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 18px;
-      cursor: pointer;
-      padding: 0 4px;
-    }
-    .close-btn:hover { color: var(--text); }
-
-    .modal-body { padding: 16px 18px; overflow-y: auto; }
     pre {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 12px;
-      font-size: 12px;
-      font-family: 'Courier New', monospace;
+      background: rgba(136,19,55,0.06);
+      border: 1px solid rgba(136,19,55,0.2);
+      padding: 16px;
+      font-size: 11px;
+      line-height: 1.8;
+      color: rgba(255,241,242,0.7);
       white-space: pre-wrap;
-      color: #adbac7;
-      line-height: 1.7;
+      overflow-y: auto;
+      max-height: 320px;
     }
 
-    .meta-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-bottom: 12px;
-      font-size: 12px;
+    /* ── Side bar ── */
+    .sidebar-text {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
     }
-    .meta-item { background: var(--surface2); border-radius: 6px; padding: 8px 10px; }
-    .meta-label { color: var(--muted); margin-bottom: 2px; }
-    .meta-value { font-weight: 600; font-family: monospace; }
 
-    /* ── Simulate Bar ── */
-    .simulate-bar {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 16px;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .simulate-bar label { font-size: 13px; color: var(--muted); }
-    .simulate-bar input, .simulate-bar select {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 5px 10px;
-      border-radius: 6px;
-      font-size: 13px;
-    }
-    .simulate-bar input { width: 180px; }
-
-    .empty-row td { text-align: center; color: var(--muted); padding: 30px; font-style: italic; }
+    /* ── Stat number glow ── */
+    .stat-glow { text-shadow: 0 0 20px currentColor; }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="live-dot"></div>
-  <h1>Jenkins Simulator</h1>
-  <span class="badge">LIVE</span>
-  <span style="margin-left:auto;color:var(--muted);font-size:12px">Auto-refreshes every 2s</span>
-</header>
+<div class="flex min-h-screen">
 
-<main>
+  <!-- ── Main content ── -->
+  <div class="flex-grow flex flex-col overflow-hidden">
 
-  <!-- Stat Cards -->
-  <div class="stats-row">
-    <div class="stat-card queued"><div class="number" id="s-queued">0</div><div class="label">Queued</div></div>
-    <div class="stat-card running"><div class="number" id="s-running">0</div><div class="label">Running</div></div>
-    <div class="stat-card success"><div class="number" id="s-success">0</div><div class="label">Success</div></div>
-    <div class="stat-card failed"><div class="number" id="s-failed">0</div><div class="label">Failed</div></div>
+    <!-- Header -->
+    <header class="px-10 pt-10 pb-6 border-b border-rose-900/20">
+      <div class="flex items-end justify-between">
+        <div>
+          <h1 class="text-6xl font-black text-rose-600 tracking-tighter leading-none">JENKINS_SIM</h1>
+          <div class="flex items-center gap-4 mt-3">
+            <span class="text-rose-100/40 font-light tracking-[0.3em] text-sm">VARUN R // 1BM23CB059</span>
+            <div class="h-px flex-grow bg-rose-900/25 max-w-xs"></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 pb-1">
+          <div class="live-dot w-2 h-2 rounded-full bg-rose-500"></div>
+          <span class="text-[10px] text-rose-500 font-black tracking-[0.3em] uppercase">Pipeline Active</span>
+          <span class="text-[10px] text-rose-900 tracking-[0.2em] ml-4" id="uptime-display">UPTIME: —</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex-grow overflow-y-auto px-10 py-8 space-y-8">
+
+      <!-- Stat Cards -->
+      <div class="grid grid-cols-4 gap-4">
+        <div class="panel p-6">
+          <div class="text-[10px] text-rose-500 font-black tracking-[0.3em] mb-3">[01_QUEUED]</div>
+          <div class="text-5xl font-black text-amber-400 stat-glow" id="s-queued">0</div>
+          <div class="text-[10px] text-rose-100/30 tracking-widest mt-2 uppercase">Awaiting dispatch</div>
+        </div>
+        <div class="panel p-6">
+          <div class="text-[10px] text-rose-500 font-black tracking-[0.3em] mb-3">[02_RUNNING]</div>
+          <div class="text-5xl font-black text-rose-400 stat-glow" id="s-running">0</div>
+          <div class="text-[10px] text-rose-100/30 tracking-widest mt-2 uppercase">In execution</div>
+        </div>
+        <div class="panel p-6">
+          <div class="text-[10px] text-rose-500 font-black tracking-[0.3em] mb-3">[03_SUCCESS]</div>
+          <div class="text-5xl font-black text-green-400 stat-glow" id="s-success">0</div>
+          <div class="text-[10px] text-rose-100/30 tracking-widest mt-2 uppercase">Completed clean</div>
+        </div>
+        <div class="panel p-6">
+          <div class="text-[10px] text-rose-500 font-black tracking-[0.3em] mb-3">[04_FAILED]</div>
+          <div class="text-5xl font-black text-red-500 stat-glow" id="s-failed">0</div>
+          <div class="text-[10px] text-rose-100/30 tracking-widest mt-2 uppercase">Build errors</div>
+        </div>
+      </div>
+
+      <!-- Workers -->
+      <div>
+        <div class="text-[10px] text-rose-900 font-black tracking-[0.4em] uppercase mb-4">// Worker Nodes</div>
+        <div class="grid grid-cols-4 gap-4" id="workers-grid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <!-- Trigger Bar -->
+      <div class="panel p-6">
+        <div class="text-[10px] text-rose-500 font-black tracking-[0.3em] mb-5">[WEBHOOK_TRIGGER]</div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <input type="text" id="inp-repo" placeholder="repo_name" value="web-frontend" style="width:180px">
+          <select id="inp-lang">
+            <option value="python">python</option>
+            <option value="javascript" selected>javascript</option>
+            <option value="java">java</option>
+            <option value="general">general</option>
+          </select>
+          <input type="text" id="inp-branch" placeholder="branch" value="main" style="width:120px">
+          <button class="btn-primary" onclick="triggerWebhook()">⚡ Trigger Webhook</button>
+          <button class="btn-ghost" onclick="triggerRandom()">⟳ Random Job</button>
+          <button class="btn-ghost" onclick="triggerBurst()">▶▶ Burst × 5</button>
+        </div>
+      </div>
+
+      <!-- Job Table -->
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <div class="text-[10px] text-rose-900 font-black tracking-[0.4em] uppercase">// Job Queue</div>
+          <div class="flex gap-2">
+            <button class="btn-filter active" onclick="filterJobs('', this)">ALL</button>
+            <button class="btn-filter" onclick="filterJobs('queued', this)">QUEUED</button>
+            <button class="btn-filter" onclick="filterJobs('running', this)">RUNNING</button>
+            <button class="btn-filter" onclick="filterJobs('success', this)">SUCCESS</button>
+            <button class="btn-filter" onclick="filterJobs('failed', this)">FAILED</button>
+          </div>
+        </div>
+
+        <div class="panel overflow-hidden">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr style="background:rgba(136,19,55,0.08)">
+                <th class="text-left p-4 text-[10px] text-rose-900 font-black tracking-[0.3em] uppercase">Job ID</th>
+                <th class="text-left p-4 text-[10px] text-rose-900 font-black tracking-[0.3em] uppercase">Repo</th>
+                <th class="text-left p-4 text-[10px] text-rose-900 font-black tracking-[0.3em] uppercase">Branch</th>
+                <th class="text-left p-4 text-[10px] text-rose-900 font-black tracking-[0.3em] uppercase">Lang</th>
+                <th class="text-left p-4 text-[10px] text-rose-900 font-black tracking-[0.3em] uppercase">Status</th>
+                <th class="text-left p-4 text-[10px] text-rose-900 font-black tracking-[0.3em] uppercase">Worker</th>
+                <th class="text-left p-4 text-[10px] text-rose-900 font-black tracking-[0.3em] uppercase">Duration</th>
+                <th class="text-left p-4 text-[10px] text-rose-900 font-black tracking-[0.3em] uppercase">Created</th>
+              </tr>
+            </thead>
+            <tbody id="jobs-tbody">
+              <tr><td colspan="8" class="text-center p-10 text-rose-900 text-xs tracking-widest italic">NO JOBS — TRIGGER ONE ABOVE</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /scroll area -->
+
+    <!-- Footer -->
+    <footer class="px-10 py-5 border-t border-rose-900/20 flex justify-between items-center">
+      <span class="text-[10px] text-rose-900 tracking-[0.4em] uppercase">BMSCE // CSBS // Dept_CNS</span>
+      <span class="text-[10px] text-rose-900 tracking-[0.4em] uppercase">Auto_Refresh: 2s // Session: 2026_ACTIVE</span>
+    </footer>
   </div>
 
-  <!-- Workers -->
-  <div class="section-header">
-    <h2>Workers</h2>
-  </div>
-  <div class="workers-grid" id="workers-grid">
-    <!-- populated by JS -->
-  </div>
-
-  <!-- Simulate Bar -->
-  <div class="simulate-bar">
-    <label>Trigger a job:</label>
-    <input type="text" id="inp-repo" placeholder="Repo name (e.g. my-app)" value="web-frontend">
-    <select id="inp-lang">
-      <option value="python">Python</option>
-      <option value="javascript" selected>JavaScript</option>
-      <option value="java">Java</option>
-      <option value="general">General</option>
-    </select>
-    <input type="text" id="inp-branch" placeholder="Branch" value="main" style="width:110px">
-    <button class="btn" onclick="triggerWebhook()">⚡ Trigger webhook</button>
-    <button class="btn btn-outline" onclick="triggerRandom()">🎲 Random job</button>
-    <button class="btn btn-outline" onclick="triggerBurst()">💥 Burst (5 jobs)</button>
+  <!-- ── Sidebar ── -->
+  <div class="hidden lg:flex w-20 bg-rose-600 flex-col items-center justify-between py-12 text-rose-950 shrink-0">
+    <div class="sidebar-text font-black">Pipeline Scheduler</div>
+    <div class="flex-grow border-l border-rose-950/20 my-8"></div>
+    <div class="sidebar-text font-black">Workers Online</div>
   </div>
 
-  <!-- Job Table -->
-  <div class="section-header">
-    <h2>Job Queue</h2>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-outline sm" onclick="filterJobs('')">All</button>
-      <button class="btn btn-outline sm" onclick="filterJobs('queued')">Queued</button>
-      <button class="btn btn-outline sm" onclick="filterJobs('running')">Running</button>
-      <button class="btn btn-outline sm" onclick="filterJobs('success')">Success</button>
-      <button class="btn btn-outline sm" onclick="filterJobs('failed')">Failed</button>
+</div>
+
+<!-- ── Job Detail Modal ── -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div style="background:#0e0508;border:1px solid rgba(136,19,55,0.4);width:90%;max-width:680px;max-height:85vh;display:flex;flex-direction:column;">
+    <div style="padding:16px 20px;border-bottom:1px solid rgba(136,19,55,0.2);display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="text-[10px] text-rose-500 font-black tracking-[0.3em] mb-1">[JOB_DETAIL]</div>
+        <div class="text-sm font-black text-rose-100" id="modal-title">—</div>
+      </div>
+      <button onclick="closeModal()" style="background:none;border:none;color:rgba(255,241,242,0.4);font-size:18px;cursor:pointer;font-family:inherit;">✕</button>
     </div>
-  </div>
-
-  <div class="table-wrapper">
-    <table>
-      <thead>
-        <tr>
-          <th>Job ID</th>
-          <th>Repo</th>
-          <th>Branch</th>
-          <th>Language</th>
-          <th>Status</th>
-          <th>Worker</th>
-          <th>Duration</th>
-          <th>Created</th>
-        </tr>
-      </thead>
-      <tbody id="jobs-tbody">
-        <tr class="empty-row"><td colspan="8">No jobs yet. Trigger one above!</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-</main>
-
-<!-- Log Modal -->
-<div class="modal-overlay" id="modal" onclick="closeModal(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 id="modal-title">Job Details</h3>
-      <button class="close-btn" onclick="closeModalDirect()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="meta-grid" id="modal-meta"></div>
+    <div style="padding:16px 20px;overflow-y:auto;">
+      <div class="grid grid-cols-3 gap-3 mb-5" id="modal-meta"></div>
+      <div class="text-[10px] text-rose-900 font-black tracking-[0.3em] mb-2">[BUILD_LOG]</div>
       <pre id="modal-log">Loading...</pre>
     </div>
   </div>
@@ -400,44 +293,30 @@
 
 <script>
   let currentFilter = '';
-  let allJobs = [];
 
   // ── Helpers ──────────────────────────────────────────────
-  function timeSince(dateStr) {
-    if (!dateStr) return '—';
-    const diff = Date.now() - new Date(dateStr).getTime();
+  function timeSince(d) {
+    if (!d) return '—';
+    const diff = Date.now() - new Date(d).getTime();
     if (diff < 60000)  return Math.floor(diff/1000) + 's ago';
     if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
     return Math.floor(diff/3600000) + 'h ago';
   }
-
-  function fmtDuration(ms) {
-    if (!ms) return '—';
-    return ms < 1000 ? ms + 'ms' : (ms/1000).toFixed(1) + 's';
-  }
-
-  function statusIcon(s) {
-    return { queued: '⏳', running: '🔵', success: '✅', failed: '❌' }[s] || '?';
-  }
+  function fmtMs(ms) { return ms ? (ms/1000).toFixed(1)+'s' : '—'; }
+  function statusIcon(s) { return {queued:'⏳',running:'◉',success:'✓',failed:'✗'}[s]||'?'; }
 
   // ── Fetch & Render ───────────────────────────────────────
   async function fetchAll() {
     try {
-      const [statsRes, workersRes, jobsRes] = await Promise.all([
-        fetch('/stats'),
-        fetch('/workers'),
-        fetch('/jobs' + (currentFilter ? '?status=' + currentFilter : '')),
+      const [stats, workers, jobs] = await Promise.all([
+        fetch('/stats').then(r=>r.json()),
+        fetch('/workers').then(r=>r.json()),
+        fetch('/jobs'+(currentFilter?'?status='+currentFilter:'')).then(r=>r.json()),
       ]);
-      const stats   = await statsRes.json();
-      const workers = await workersRes.json();
-      const jobs    = await jobsRes.json();
-      allJobs = jobs;
       renderStats(stats);
       renderWorkers(workers);
       renderJobs(jobs);
-    } catch(e) {
-      console.error('Fetch error:', e);
-    }
+    } catch(e) { console.error(e); }
   }
 
   function renderStats(s) {
@@ -448,18 +327,19 @@
   }
 
   function renderWorkers(workers) {
-    const grid = document.getElementById('workers-grid');
-    grid.innerHTML = workers.map(w => `
-      <div class="worker-card ${w.status}">
-        <div class="worker-name">${w.name}</div>
-        <div class="worker-specialty">${w.specialty}</div>
-        <span class="worker-status ${w.status}">
-          ${w.status === 'busy' ? '🔵' : '🟢'} ${w.status}
-        </span>
-        ${w.current_job_id ? `<div class="worker-job">Job: ${w.current_job_id.slice(0,8)}…</div>` : ''}
-        <div class="worker-stats">
-          <span>✅ ${w.jobs_completed}</span>
-          <span>❌ ${w.jobs_failed}</span>
+    document.getElementById('workers-grid').innerHTML = workers.map(w => `
+      <div class="panel p-5 ${w.status==='busy'?'worker-busy':'worker-idle'}">
+        <div class="text-[10px] text-rose-500 font-black tracking-[0.25em] mb-2">${w.id.toUpperCase()}</div>
+        <div class="text-sm font-black text-rose-100 mb-1">${w.name}</div>
+        <div class="text-[10px] text-rose-400/60 mb-3 tracking-widest">${w.specialty}</div>
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-1.5 h-1.5 rounded-full ${w.status==='busy'?'bg-rose-500':'bg-green-500'} ${w.status==='busy'?'live-dot':''}"></div>
+          <span class="text-[10px] font-black tracking-[0.15em] uppercase ${w.status==='busy'?'text-rose-400':'text-green-400'}">${w.status}</span>
+        </div>
+        ${w.current_job_id ? `<div class="text-[9px] text-rose-900 font-mono truncate mb-2">${w.current_job_id.slice(0,20)}…</div>` : ''}
+        <div class="flex gap-4 text-[10px]">
+          <span class="text-green-500">✓ ${w.jobs_completed}</span>
+          <span class="text-red-500">✗ ${w.jobs_failed}</span>
         </div>
       </div>
     `).join('');
@@ -468,89 +348,97 @@
   function renderJobs(jobs) {
     const tbody = document.getElementById('jobs-tbody');
     if (!jobs.length) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">No ${currentFilter} jobs found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center p-10 text-rose-900 text-xs tracking-widest italic">NO ${currentFilter.toUpperCase()||''} JOBS FOUND</td></tr>`;
       return;
     }
-
     tbody.innerHTML = jobs.map(j => `
-      <tr onclick="showJobDetail('${j.id}')">
-        <td style="font-family:monospace;font-size:12px;color:var(--muted)">${j.id.slice(0,8)}…</td>
-        <td><strong>${j.repo_name}</strong></td>
-        <td style="font-family:monospace;font-size:12px">${j.branch}</td>
-        <td><span class="lang-tag">${j.language}</span></td>
-        <td><span class="status-pill ${j.status}">${statusIcon(j.status)} ${j.status}</span></td>
-        <td style="font-size:12px;color:var(--muted)">${j.worker_id ? j.worker_id.replace('worker-', 'W') : '—'}</td>
-        <td style="font-size:12px">${fmtDuration(j.duration_ms)}</td>
-        <td style="font-size:12px;color:var(--muted)">${timeSince(j.created_at)}</td>
+      <tr onclick="showJob('${j.id}')" class="slide-in">
+        <td class="p-4 text-[11px] text-rose-900 font-mono">${j.id.slice(0,8)}…</td>
+        <td class="p-4 text-[12px] font-black text-rose-100">${j.repo_name}</td>
+        <td class="p-4 text-[11px] text-rose-100/50">${j.branch}</td>
+        <td class="p-4"><span class="text-[10px] text-rose-400 border border-rose-900/40 px-2 py-0.5">${j.language}</span></td>
+        <td class="p-4"><span class="pill pill-${j.status}">${statusIcon(j.status)} ${j.status}</span></td>
+        <td class="p-4 text-[11px] text-rose-900">${j.worker_id ? j.worker_id.replace('worker-','W') : '—'}</td>
+        <td class="p-4 text-[11px] text-rose-100/50">${fmtMs(j.duration_ms)}</td>
+        <td class="p-4 text-[11px] text-rose-900">${timeSince(j.created_at)}</td>
       </tr>
     `).join('');
   }
 
-  // ── Filter ───────────────────────────────────────────────
-  function filterJobs(status) {
+  // ── Filters ──────────────────────────────────────────────
+  function filterJobs(status, btn) {
     currentFilter = status;
+    document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
     fetchAll();
   }
 
   // ── Triggers ─────────────────────────────────────────────
   async function triggerWebhook() {
-    const repo   = document.getElementById('inp-repo').value   || 'my-app';
-    const lang   = document.getElementById('inp-lang').value   || 'general';
-    const branch = document.getElementById('inp-branch').value || 'main';
-
     await fetch('/webhook', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ repo, language: lang, branch, commit: Math.random().toString(16).slice(2,10) }),
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        repo:   document.getElementById('inp-repo').value   || 'my-app',
+        language: document.getElementById('inp-lang').value,
+        branch: document.getElementById('inp-branch').value || 'main',
+        commit: Math.random().toString(16).slice(2,10),
+      })
     });
     fetchAll();
   }
 
   async function triggerRandom() {
-    await fetch('/simulate', { method: 'POST' });
+    await fetch('/simulate', {method:'POST'});
     fetchAll();
   }
 
   async function triggerBurst() {
-    const promises = Array.from({ length: 5 }, () =>
-      fetch('/simulate', { method: 'POST' })
-    );
-    await Promise.all(promises);
+    await Promise.all(Array.from({length:5}, () => fetch('/simulate',{method:'POST'})));
     fetchAll();
   }
 
   // ── Modal ────────────────────────────────────────────────
-  async function showJobDetail(id) {
+  async function showJob(id) {
     document.getElementById('modal').classList.add('open');
     document.getElementById('modal-log').textContent = 'Loading…';
+    const j = await fetch('/jobs/'+id).then(r=>r.json());
 
-    const job = await fetch('/jobs/' + id).then(r => r.json());
-    document.getElementById('modal-title').textContent = `Job: ${job.id.slice(0,8)}… — ${job.repo_name}`;
-
-    document.getElementById('modal-meta').innerHTML = `
-      <div class="meta-item"><div class="meta-label">Status</div><div class="meta-value">${statusIcon(job.status)} ${job.status}</div></div>
-      <div class="meta-item"><div class="meta-label">Language</div><div class="meta-value">${job.language}</div></div>
-      <div class="meta-item"><div class="meta-label">Branch</div><div class="meta-value">${job.branch}</div></div>
-      <div class="meta-item"><div class="meta-label">Commit</div><div class="meta-value">${job.commit_hash}</div></div>
-      <div class="meta-item"><div class="meta-label">Worker</div><div class="meta-value">${job.worker_id || '—'}</div></div>
-      <div class="meta-item"><div class="meta-label">Duration</div><div class="meta-value">${fmtDuration(job.duration_ms)}</div></div>
-    `;
+    document.getElementById('modal-title').textContent = `${j.repo_name} // ${j.id.slice(0,8)}`;
+    document.getElementById('modal-meta').innerHTML = [
+      ['STATUS', `<span class="pill pill-${j.status}">${statusIcon(j.status)} ${j.status}</span>`],
+      ['LANGUAGE', j.language],
+      ['BRANCH', j.branch],
+      ['COMMIT', j.commit_hash],
+      ['WORKER', j.worker_id || '—'],
+      ['DURATION', fmtMs(j.duration_ms)],
+    ].map(([k,v]) => `
+      <div style="background:rgba(136,19,55,0.08);border:1px solid rgba(136,19,55,0.15);padding:10px 12px;">
+        <div class="text-[9px] text-rose-900 font-black tracking-[0.3em] mb-1">${k}</div>
+        <div class="text-[12px] font-black text-rose-100">${v}</div>
+      </div>
+    `).join('');
 
     document.getElementById('modal-log').textContent =
-      job.log || (job.status === 'queued' ? '⏳ Job is waiting in queue…' : '⏳ Job is running…');
+      j.log || (j.status==='queued' ? '⏳ Awaiting dispatch…' : '◉ Executing…');
   }
 
-  function closeModal(e) {
-    if (e.target.id === 'modal') closeModalDirect();
+  function closeModalOutside(e) { if (e.target.id==='modal') closeModal(); }
+  function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+  // ── Uptime display ───────────────────────────────────────
+  async function updateUptime() {
+    try {
+      const {uptime} = await fetch('/health').then(r=>r.json());
+      const m = Math.floor(uptime/60), s = Math.floor(uptime%60);
+      document.getElementById('uptime-display').textContent = `UPTIME: ${m}m ${s}s`;
+    } catch(e) {}
   }
 
-  function closeModalDirect() {
-    document.getElementById('modal').classList.remove('open');
-  }
-
-  // ── Auto refresh ─────────────────────────────────────────
+  // ── Boot ─────────────────────────────────────────────────
   fetchAll();
+  updateUptime();
   setInterval(fetchAll, 2000);
+  setInterval(updateUptime, 5000);
 </script>
 </body>
 </html>
