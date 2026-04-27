@@ -1,0 +1,15 @@
+{
+  "name": "jenkins-simulator",
+  "version": "1.0.0",
+  "description": "Simulated Jenkins CI/CD system",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sql.js": "^1.12.0",
+    "uuid": "^9.0.0",
+    "cors": "^2.8.5"
+  }
+}
